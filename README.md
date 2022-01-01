@@ -1,2 +1,2 @@
 # cryptossets
-Gimme your APIKEYs I give you what you got so far.
+Gimme your APIKEYs I tell you what you got so far.
