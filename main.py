@@ -14,5 +14,6 @@ templates = Jinja2Templates(directory="templates")
 async def kucoin_assets(request: Request):
     balance = kucoin.get_balance("")
     orders = kucoin.get_orders("")
-    context = {"request": request, "id": id}
-    return templates.TemplateResponse("item.html", context)
+    data = kucoin.calculate(balance, orders)
+    context = {"request": request, "data": data}
+    return templates.TemplateResponse("kucoin.html", context)
