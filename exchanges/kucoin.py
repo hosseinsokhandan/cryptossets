@@ -3,14 +3,13 @@ from kucoin.client import Client
 import pandas as pd
 import time
 import warnings
+from conf.settings import Settings
 
-STABLE_COINS = ["USDT", "USDC", "BUSD", "DAI", "UST", "TUSD"]
+settings = Settings()
 
-api_key = '619fbe7c2fe2ba0001e0a57e'
-api_secret = '52558931-13b7-4fcd-82ad-45422ff99e12'
-api_passphrase = 'hs46773464677346'
-
-client = Client(api_key, api_secret, api_passphrase)
+client = Client(
+    settings.KUCOIN_API_KEY, settings.KUCOIN_API_SECRET, settings.KICOIN_API_PASSPHRASE
+)
 
 
 def get_orders(symbol=None) -> List[Dict]:
@@ -20,8 +19,7 @@ def get_orders(symbol=None) -> List[Dict]:
     orders = []
     while start_time < now:
         _o = client.get_orders(
-            symbol=symbol, start=start_time,
-            end=start_time + seven_day_in_milisec
+            symbol=symbol, start=start_time, end=start_time + seven_day_in_milisec
         )["items"]
         if _o:
             for o in _o:
@@ -44,42 +42,37 @@ def calculate(balance: list, orders: list) -> List[Dict]:
         _data["currency"] = b["currency"]
         _data["balance"] = b["balance"]
 
-        if b["currency"] in STABLE_COINS:
+        if b["currency"] in settings.STABLE_COINS:
             data.append(_data)
             continue
 
         asset_history = list(
-            filter(
-                lambda a: a["symbol"].split("-")[0] == b["currency"], orders
-            )
+            filter(lambda a: a["symbol"].split("-")[0] == b["currency"], orders)
         )
         df = pd.DataFrame(asset_history, columns=["price", "size", "side"])
         df = df.loc[df["side"] == "buy"]
-        df["size"] = df["size"].astype('float')
-        df["price"] = df["price"].astype('float')
+        df["size"] = df["size"].astype("float")
+        df["price"] = df["price"].astype("float")
         df["mul"] = df["price"] * df["size"]
         mul = df["mul"].sum()
         size = df["size"].sum()
         with warnings.catch_warnings():
-            warnings.filterwarnings('error')
+            warnings.filterwarnings("error")
             try:
                 _data["avg_buy"] = round(mul / size, 2)
             except:
                 _data["avg_buy"] = float(0)
         _data["size"] = size
-        _data["current_price"] = client.get_ticker(
-            f'{b["currency"]}-USDT'
-        )["price"]
+        _data["current_price"] = client.get_ticker(f'{b["currency"]}-USDT')["price"]
         _data["profit"] = round(
-            (float(_data["current_price"]) * _data["size"]) -
-            (_data["avg_buy"] * _data["size"]),
-            2
+            (float(_data["current_price"]) * _data["size"])
+            - (_data["avg_buy"] * _data["size"]),
+            2,
         )
         _data["profit_class"] = "success" if _data["profit"] >= 0 else "danger"
         _data["profit_proportion"] = round(
-            (_data["profit"] * 100) / (_data["avg_buy"] * _data["size"]),
-            2
+            (_data["profit"] * 100) / (_data["avg_buy"] * _data["size"]), 2
         )
         data.append(_data)
 
-    return sorted(data, key=lambda i: i.get('profit', 0), reverse=True)
+    return sorted(data, key=lambda i: i.get("profit", 0), reverse=True)
